@@ -71,7 +71,7 @@ func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
 
 	output <- RunnerOutput{
 		Command: cmd,
-		Output:  string(out[:]),
+		Raw:     string(out[:]),
 		Json:    rawJson,
 	}
 }
