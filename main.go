@@ -6,18 +6,37 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
+	"os"
+	"bufio"
 )
 
 type RunnerOutput struct {
 	Command string
-	Output string
+	Raw			string
+	Json		map[string]interface{}
 }
 
 func main() {
-	fmt.Println("vim-go")
+	// https://coderwall.com/p/zyxyeg/golang-having-fun-with-os-stdin-and-shell-pipes
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		log.Fatalf("Failed getting stats from stdin: %s", err)
+	}
+	if fi.Mode() & os.ModeNamedPipe == 0 {
+		// no piped data
+		return
+	}
 
-	n := 5
+	inputStream := bufio.NewScanner(os.Stdin)
+	commands := []string{}
 
+	// https://stackoverflow.com/a/12369689
+	for inputStream.Scan() {
+		inputCommand := inputStream.Text()
+		commands = append(commands, inputCommand)
+	}
+
+	n := len(commands)
 	runnerOutput := make(chan RunnerOutput, n)
 	results := []RunnerOutput{}
 
@@ -25,7 +44,7 @@ func main() {
 	wg.Add(n)
 
 	for i := 0; i < n; i++ {
-		go runner("ls -al", &wg, runnerOutput)
+		go runner(commands[i], &wg, runnerOutput)
 	}
 
 	for i := 0; i < n; i++ {
@@ -38,17 +57,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("JSON marshaling failed: %s", err)
 	}
+
 	fmt.Printf("%s\n", data)
 }
 
 func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
 	defer wg.Done()
-	fmt.Println(fmt.Sprintf("runner: %s", cmd))
-	out, _ := exec.Command("sh", "-c", cmd).Output()
+
+	out, _ := exec.Command("sh", "-c", cmd).CombinedOutput()
+
+	var rawJson map[string]interface{}
+	json.Unmarshal(out, &rawJson)
 
 	output <- RunnerOutput{
 		Command: cmd,
 		Output: string(out[:]),
+		Json: rawJson,
 	}
 }
 
