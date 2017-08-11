@@ -1,19 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"sync"
-	"encoding/json"
-	"log"
-	"os/exec"
-	"os"
 	"bufio"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"sync"
 )
 
 type RunnerOutput struct {
 	Command string
-	Raw			string
-	Json		map[string]interface{}
+	Raw     string
+	Json    map[string]interface{}
 }
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed getting stats from stdin: %s", err)
 	}
-	if fi.Mode() & os.ModeNamedPipe == 0 {
+	if fi.Mode()&os.ModeNamedPipe == 0 {
 		// no piped data
 		return
 	}
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	for i := 0; i < n; i++ {
-		results = append(results, <- runnerOutput)
+		results = append(results, <-runnerOutput)
 	}
 
 	wg.Wait()
@@ -71,8 +71,7 @@ func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
 
 	output <- RunnerOutput{
 		Command: cmd,
-		Output: string(out[:]),
-		Json: rawJson,
+		Output:  string(out[:]),
+		Json:    rawJson,
 	}
 }
-
