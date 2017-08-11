@@ -44,7 +44,7 @@ Using `para` I can now get the same result in 16 seconds...
 ```
 aws sqs list-queues --queue-name-prefix production \
   | jsawk 'return this.QueueUrls.join("\n")' \
-  | xargs -I {} echo 'aws sqs get-queue-attributes --queue-url {} --attribute-names QueueArn ApproximateNumberOfMessages' \
+  | while read url; do echo "aws sqs get-queue-attributes --queue-url $url --attribute-names QueueArn ApproximateNumberOfMessages"; done \
   | para \
   | jsawk -n 'return out(this.Json.Attributes.ApproximateNumberOfMessages+"\t"+this.Json.Attributes.QueueArn)' \
   | sort -rn
