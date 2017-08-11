@@ -47,11 +47,11 @@ func main() {
 		go runner(commands[i], &wg, runnerOutput)
 	}
 
+	wg.Wait()
+
 	for i := 0; i < n; i++ {
 		results = append(results, <-runnerOutput)
 	}
-
-	wg.Wait()
 
 	data, err := json.Marshal(results)
 	if err != nil {
