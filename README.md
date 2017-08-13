@@ -11,12 +11,14 @@ It takes commands from `stdin`. One command per line, and returns a JSON object 
     {
       "Command": "...",
       "Raw": "...",
-      "Json": <JSON>
+      "Json": <JSON>,
+      "ExecutionTime": "5s"
     },
     {
       "Command": "...",
       "Raw": "...",
-      "Json": <JSON>
+      "Json": <JSON>,
+      "ExecutionTime": "10ms"
     }
   ]
 }
@@ -29,6 +31,7 @@ Each input command will have an associated output entry in the `Results` propert
 * `Command`: This is the command that was executed
 * `Raw`: This is the raw consolidated output from running the command (stdout and stderr are combined)
 * `Json`: JSON object representing the `Raw` output if successfully marshalled, `null` otherwise.
+* `ExecutionTime`: A string representing the [duration](https://golang.org/pkg/time/#Duration.String) of the command.
 
 ## Usage
 
