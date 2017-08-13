@@ -21,40 +21,47 @@ type RunnerOutput struct {
 }
 
 func main() {
-	// https://coderwall.com/p/zyxyeg/golang-having-fun-with-os-stdin-and-shell-pipes
+	commands := readFromStdin()
+	results := handler(commands)
+	render(results)
+}
+
+func render(results ParaResult) {
+	output, err := json.Marshal(results)
+	if err != nil {
+		log.Fatalf("JSON marshaling failed: %s", err)
+	}
+
+	fmt.Printf("%s\n", output)
+}
+
+func readFromStdin() []string {
+	commands := []string{}
+
 	fi, err := os.Stdin.Stat()
 	if err != nil {
 		log.Fatalf("Failed getting stats from stdin: %s", err)
 	}
+
 	if fi.Mode()&os.ModeNamedPipe == 0 {
 		// no piped data
-		return
+		return commands
 	}
 
-	inputStream := bufio.NewScanner(os.Stdin)
-	commands := []string{}
-
 	// https://stackoverflow.com/a/12369689
+	inputStream := bufio.NewScanner(os.Stdin)
 	for inputStream.Scan() {
 		inputCommand := inputStream.Text()
 		commands = append(commands, inputCommand)
 	}
 
-	outputs := handler(commands)
-	results := ParaResult{Results: outputs}
-
-	data, err := json.Marshal(results)
-	if err != nil {
-		log.Fatalf("JSON marshaling failed: %s", err)
-	}
-
-	fmt.Printf("%s\n", data)
+	return commands
 }
 
-func handler(commands []string) []RunnerOutput {
+func handler(commands []string) ParaResult {
 	n := len(commands)
 	runnerOutput := make(chan RunnerOutput, n)
-	results := []RunnerOutput{}
+	outputs := []RunnerOutput{}
 
 	var wg sync.WaitGroup
 	wg.Add(n)
@@ -66,10 +73,10 @@ func handler(commands []string) []RunnerOutput {
 	wg.Wait()
 
 	for i := 0; i < n; i++ {
-		results = append(results, <-runnerOutput)
+		outputs = append(outputs, <-runnerOutput)
 	}
 
-	return results
+	return ParaResult{Results: outputs}
 }
 
 func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
