@@ -30,6 +30,16 @@ Each input command will have an associated output entry in the `Results` propert
 * `Raw`: This is the raw consolidated output from running the command (stdout and stderr are combined)
 * `Json`: JSON object representing the `Raw` output if successfully marshalled, `null` otherwise.
 
+## Usage
+
+```
+Usage of para:
+  -file string
+        Path to commands file
+  -pp
+        Pretty print json output
+```
+
 ## Example
 
 ### Top SQS Queues
