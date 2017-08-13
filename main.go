@@ -7,7 +7,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
+	"time"
 )
 
 type ParaResult struct {
@@ -15,9 +17,10 @@ type ParaResult struct {
 }
 
 type RunnerOutput struct {
-	Command string
-	Raw     string
-	Json    map[string]interface{}
+	Command       string
+	Raw           string
+	Json          map[string]interface{}
+	ExecutionTime string
 }
 
 func main() {
@@ -51,8 +54,11 @@ func readFromStdin() []string {
 	// https://stackoverflow.com/a/12369689
 	inputStream := bufio.NewScanner(os.Stdin)
 	for inputStream.Scan() {
-		inputCommand := inputStream.Text()
-		commands = append(commands, inputCommand)
+		cmd := strings.TrimSpace(inputStream.Text())
+
+		if len(cmd) > 0 {
+			commands = append(commands, cmd)
+		}
 	}
 
 	return commands
@@ -82,14 +88,17 @@ func handler(commands []string) ParaResult {
 func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
 	defer wg.Done()
 
+	start := time.Now()
 	out, _ := exec.Command("sh", "-c", cmd).CombinedOutput()
+	elapsed := time.Since(start)
 
 	var rawJson map[string]interface{}
 	json.Unmarshal(out, &rawJson)
 
 	output <- RunnerOutput{
-		Command: cmd,
-		Raw:     string(out[:]),
-		Json:    rawJson,
+		Command:       cmd,
+		Raw:           string(out[:]),
+		Json:          rawJson,
+		ExecutionTime: fmt.Sprintf("%s", elapsed),
 	}
 }
