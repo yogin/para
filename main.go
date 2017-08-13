@@ -10,6 +10,10 @@ import (
 	"sync"
 )
 
+type ParaResult struct {
+	Results []RunnerOutput
+}
+
 type RunnerOutput struct {
 	Command string
 	Raw     string
@@ -36,6 +40,18 @@ func main() {
 		commands = append(commands, inputCommand)
 	}
 
+	outputs := handler(commands)
+	results := ParaResult{Results: outputs}
+
+	data, err := json.Marshal(results)
+	if err != nil {
+		log.Fatalf("JSON marshaling failed: %s", err)
+	}
+
+	fmt.Printf("%s\n", data)
+}
+
+func handler(commands []string) []RunnerOutput {
 	n := len(commands)
 	runnerOutput := make(chan RunnerOutput, n)
 	results := []RunnerOutput{}
@@ -53,12 +69,7 @@ func main() {
 		results = append(results, <-runnerOutput)
 	}
 
-	data, err := json.Marshal(results)
-	if err != nil {
-		log.Fatalf("JSON marshaling failed: %s", err)
-	}
-
-	fmt.Printf("%s\n", data)
+	return results
 }
 
 func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
