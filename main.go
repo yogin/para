@@ -39,24 +39,20 @@ func main() {
 }
 
 func render(results ParaResult, pp bool) {
-	var output string
+	var out []byte
+	var err error
 
 	if pp {
-		out, err := json.MarshalIndent(results, "", "  ")
-		if err != nil {
-			log.Fatalf("JSON MarshalIndent failed: %s", err)
-		}
-		output = string(out)
+		out, err = json.MarshalIndent(results, "", "  ")
 	} else {
-		out, err := json.Marshal(results)
-		if err != nil {
-			log.Fatalf("JSON Marshal failed: %s", err)
-		}
-		output = string(out)
+		out, err = json.Marshal(results)
 	}
 
+	if err != nil {
+		log.Fatalf("JSON Marshal failed: %s", err)
+	}
 
-	fmt.Printf("%s\n", output)
+	fmt.Printf("%s\n", string(out))
 }
 
 func readFromFile(path string) []string {
