@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -24,16 +25,31 @@ type RunnerOutput struct {
 }
 
 func main() {
+	prettyPrintFlag := flag.Bool("pp", false, "Pretty print json output")
+	flag.Parse()
+
 	commands := readFromStdin()
 	results := handler(commands)
-	render(results)
+	render(results, *prettyPrintFlag)
 }
 
-func render(results ParaResult) {
-	output, err := json.Marshal(results)
-	if err != nil {
-		log.Fatalf("JSON marshaling failed: %s", err)
+func render(results ParaResult, pp bool) {
+	var output string
+
+	if pp {
+		out, err := json.MarshalIndent(results, "", "  ")
+		if err != nil {
+			log.Fatalf("JSON MarshalIndent failed: %s", err)
+		}
+		output = string(out)
+	} else {
+		out, err := json.Marshal(results)
+		if err != nil {
+			log.Fatalf("JSON Marshal failed: %s", err)
+		}
+		output = string(out)
 	}
+
 
 	fmt.Printf("%s\n", output)
 }
