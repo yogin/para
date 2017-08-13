@@ -50,3 +50,9 @@ aws sqs list-queues --queue-name-prefix production \
   | sort -rn
 ```
 
+## TODO
+
+* When running a lot of commands, it can freeze for a second depending on your workload, so it might be good to stagger the goroutines, or limit how many routines can run at a single time
+* More/better error handling
+* ...
+
