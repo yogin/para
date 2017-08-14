@@ -37,6 +37,8 @@ Each input command will have an associated output entry in the `Results` propert
 
 ```
 Usage of para:
+  -c int
+        Maximum number of commands to run at the same time (default 10)
   -file string
         Path to commands file
   -pp
