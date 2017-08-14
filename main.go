@@ -28,13 +28,18 @@ type RunnerOutput struct {
 func main() {
 	prettyPrintFlag := flag.Bool("pp", false, "Pretty print json output")
 	commandFileFlag := flag.String("file", "", "Path to commands file")
+	concurrentRunFlag := flag.Int("c", 10, "Maximum number of commands to run at the same time")
 	flag.Parse()
+
+	if *concurrentRunFlag < 1 {
+		log.Fatalf("Maximum number of concurrent commands should be > 0")
+	}
 
 	commands := []string{}
 	commands = append(commands, readFromStdin()...)
 	commands = append(commands, readFromFile(*commandFileFlag)...)
 
-	results := handler(commands)
+	results := handler(commands, concurrentRunFlag)
 	render(results, *prettyPrintFlag)
 }
 
@@ -99,30 +104,38 @@ func commandsFromBuffer(buffer io.Reader) []string {
 	return commands
 }
 
-func handler(commands []string) ParaResult {
+func handler(commands []string, concurrent *int) ParaResult {
 	n := len(commands)
-	runnerOutput := make(chan RunnerOutput, n)
+	results := make(chan RunnerOutput, n)
 	outputs := []RunnerOutput{}
+	bucket := make(chan bool, *concurrent)
 
 	var wg sync.WaitGroup
 	wg.Add(n)
 
 	for i := 0; i < n; i++ {
-		go runner(commands[i], &wg, runnerOutput)
+		bucket <- true
+
+		go func(cmd string) {
+			defer func() {
+				wg.Done()
+				<-bucket
+			}()
+
+			results <- runner(cmd)
+		}(commands[i])
 	}
 
 	wg.Wait()
 
 	for i := 0; i < n; i++ {
-		outputs = append(outputs, <-runnerOutput)
+		outputs = append(outputs, <-results)
 	}
 
 	return ParaResult{Results: outputs}
 }
 
-func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
-	defer wg.Done()
-
+func runner(cmd string) RunnerOutput {
 	start := time.Now()
 	out, _ := exec.Command("sh", "-c", cmd).CombinedOutput()
 	elapsed := time.Since(start)
@@ -130,7 +143,7 @@ func runner(cmd string, wg *sync.WaitGroup, output chan RunnerOutput) {
 	var rawJson map[string]interface{}
 	json.Unmarshal(out, &rawJson)
 
-	output <- RunnerOutput{
+	return RunnerOutput{
 		Command:       cmd,
 		Raw:           string(out[:]),
 		Json:          rawJson,
