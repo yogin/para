@@ -62,9 +62,3 @@ $ aws sqs list-queues --queue-name-prefix production \
 
 Without `para` I would have to fetch each queue attributes sequentially, it takes over 2 minutes to fetch 150. Using `para` this drops to 15 seconds!
 
-## TODO
-
-* When running a lot of commands, it can freeze for a second depending on your workload, so it might be good to stagger the goroutines, or limit how many routines can run at a single time
-* More/better error handling
-* ...
-
