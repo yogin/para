@@ -1,28 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
 	"sync"
-	"time"
 )
 
 type ParaResult struct {
-	Results []RunnerOutput
-}
-
-type RunnerOutput struct {
-	Command       string
-	Raw           string
-	Json          map[string]interface{}
-	ExecutionTime string
+	Results []*Runner
 }
 
 func main() {
@@ -35,7 +23,7 @@ func main() {
 		log.Fatalf("Maximum number of concurrent commands should be > 0")
 	}
 
-	commands := []string{}
+	commands := []*Runner{}
 	commands = append(commands, readFromStdin()...)
 	commands = append(commands, readFromFile(*commandFileFlag)...)
 
@@ -60,9 +48,9 @@ func render(results ParaResult, pp bool) {
 	fmt.Printf("%s\n", string(out))
 }
 
-func readFromFile(path string) []string {
+func readFromFile(path string) []*Runner {
 	if len(path) == 0 {
-		return []string{}
+		return []*Runner{}
 	}
 
 	f, err := os.Open(path)
@@ -72,10 +60,10 @@ func readFromFile(path string) []string {
 		log.Fatalf("Failed reading from file %s", err)
 	}
 
-	return commandsFromBuffer(f)
+	return NewRunnersFromBuffer(f)
 }
 
-func readFromStdin() []string {
+func readFromStdin() []*Runner {
 	fi, err := os.Stdin.Stat()
 	if err != nil {
 		log.Fatalf("Failed getting stats from stdin: %s", err)
@@ -83,70 +71,33 @@ func readFromStdin() []string {
 
 	if fi.Mode()&os.ModeNamedPipe == 0 {
 		// no piped data
-		return []string{}
+		return []*Runner{}
 	}
 
-	return commandsFromBuffer(os.Stdin)
+	return NewRunnersFromBuffer(os.Stdin)
 }
 
-func commandsFromBuffer(buffer io.Reader) []string {
-	commands := []string{}
-
-	stream := bufio.NewScanner(buffer)
-	for stream.Scan() {
-		cmd := strings.TrimSpace(stream.Text())
-
-		if len(cmd) > 0 {
-			commands = append(commands, cmd)
-		}
-	}
-
-	return commands
-}
-
-func handler(commands []string, concurrent *int) ParaResult {
-	n := len(commands)
-	results := make(chan RunnerOutput, n)
-	outputs := []RunnerOutput{}
+func handler(runners []*Runner, concurrent *int) ParaResult {
+	n := len(runners)
 	bucket := make(chan bool, *concurrent)
 
 	var wg sync.WaitGroup
 	wg.Add(n)
 
-	for i := 0; i < n; i++ {
+	for i := range runners {
 		bucket <- true
 
-		go func(cmd string) {
+		go func(r *Runner) {
 			defer func() {
 				wg.Done()
 				<-bucket
 			}()
 
-			results <- runner(cmd)
-		}(commands[i])
+			r.Run()
+		}(runners[i])
 	}
 
 	wg.Wait()
 
-	for i := 0; i < n; i++ {
-		outputs = append(outputs, <-results)
-	}
-
-	return ParaResult{Results: outputs}
-}
-
-func runner(cmd string) RunnerOutput {
-	start := time.Now()
-	out, _ := exec.Command("sh", "-c", cmd).CombinedOutput()
-	elapsed := time.Since(start)
-
-	var rawJson map[string]interface{}
-	json.Unmarshal(out, &rawJson)
-
-	return RunnerOutput{
-		Command:       cmd,
-		Raw:           string(out[:]),
-		Json:          rawJson,
-		ExecutionTime: fmt.Sprintf("%s", elapsed),
-	}
+	return ParaResult{Results: runners}
 }
