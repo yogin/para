@@ -78,11 +78,10 @@ func readFromStdin() []*Runner {
 }
 
 func handler(runners []*Runner, concurrent *int) ParaResult {
-	n := len(runners)
 	bucket := make(chan bool, *concurrent)
 
 	var wg sync.WaitGroup
-	wg.Add(n)
+	wg.Add(len(runners))
 
 	for i := range runners {
 		bucket <- true
